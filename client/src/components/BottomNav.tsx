@@ -115,14 +115,16 @@ export function BottomNav() {
           key={item.to}
           to={item.to}
           end={item.to === "/dashboard"}
+          data-haptic="light"
           className={({ isActive }) =>
             `bottom-nav__item${isActive ? " is-active" : ""}`
           }
         >
           {({ isActive }) => (
             <>
+              <span className="bottom-nav__indicator" aria-hidden="true" />
               {item.icon(isActive)}
-              <span>{item.label}</span>
+              <span className="bottom-nav__label">{item.label}</span>
             </>
           )}
         </NavLink>

@@ -59,21 +59,6 @@ const ChevronRightIcon = () => (
   </svg>
 );
 
-const InfoIcon = () => (
-  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <circle cx="12" cy="12" r="10" />
-    <line x1="12" y1="8" x2="12" y2="12" />
-    <line x1="12" y1="16" x2="12.01" y2="16" />
-  </svg>
-);
-
-const CpuIcon = () => (
-  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <rect x="9" y="9" width="6" height="6" />
-    <path d="M6 9H2v6h4M18 9h4v6h-4M9 6V2H6v4M15 6V2h3v4M9 18v4H6v-4M15 18v4h3v-4" />
-  </svg>
-);
-
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function ProfilePage() {
@@ -88,37 +73,31 @@ export function ProfilePage() {
     .toUpperCase();
 
   return (
-    <div className="page page-enter stack-lg">
-
-      {/* PROFILE HEADER */}
-      <section className="profile-header" aria-label="Farm profile">
-        {/* Circular avatar — not a square web avatar */}
-        <div
-          className="profile-avatar"
-          aria-hidden="true"
-          style={{ borderRadius: "50%" }}
-        >
+    <div className="page stack-lg">
+      <section className="farm-profile-card" aria-label="Farm profile">
+        <div className="farm-profile-avatar" aria-hidden="true">
           {initials}
         </div>
-        <div className="profile-header__info">
-          <p className="profile-header__name">{profile.farmName}</p>
-          <p className="profile-header__sub">
+        <div className="farm-profile-copy">
+          <p className="farm-profile-name">{profile.farmName}</p>
+          <p className="farm-profile-location">
             {profile.village}, {profile.district}
           </p>
-          <div>
-            <span className="profile-header__crop">
-              {profile.primaryCrop}
-            </span>
-          </div>
+          <span className="farm-profile-crop">{profile.primaryCrop}</span>
         </div>
       </section>
 
-      {/* SCAN HISTORY */}
       <section aria-label="Detection history">
-        <p className="settings-group-label">Detection History</p>
-        <div className="history-list" role="list">
+        <p className="section-label">DETECTION HISTORY</p>
+        <div className="native-list-card" role="list">
           {scanHistory.map((entry) => (
-            <article key={entry.id} className="history-item" role="listitem">
+            <article
+              key={entry.id}
+              className="history-item tap-row"
+              role="listitem"
+              data-row-tap
+              data-haptic={entry.confidence >= 90 ? "medium" : "light"}
+            >
               <div className="history-item__left">
                 <p className="history-item__title">{entry.issue}</p>
                 <p className="history-item__meta">
@@ -136,93 +115,80 @@ export function ProfilePage() {
         </div>
       </section>
 
-      {/* PREFERENCES — iOS Settings grouped rows */}
       <section aria-label="Preferences">
-        <p className="settings-group-label">Preferences</p>
-        <div className="settings-group">
-          <div className="settings-row">
-            <div className="settings-row__icon" style={{ background: "rgba(99,102,241,0.1)", color: "#6366f1" }}>
+        <p className="section-label">PREFERENCES</p>
+        <div className="native-list-card preferences-list" role="list">
+          <article className="preferences-row tap-row" data-row-tap role="listitem">
+            <div
+              className="preferences-row__icon"
+              style={{ background: "#EAF0FE", color: "#3B71DE" }}
+              aria-hidden="true"
+            >
               <GlobeIcon />
             </div>
-            <div className="settings-row__body">
-              <p className="settings-row__title">Language</p>
+            <div className="preferences-row__body">
+              <p className="preferences-row__title">Language</p>
+              <p className="preferences-row__subtitle">App language</p>
             </div>
-            <div className="settings-row__value">
+            <div className="preferences-row__value">
               {profile.language}
               <ChevronRightIcon />
             </div>
-          </div>
+          </article>
 
-          <div className="settings-row">
-            <div className="settings-row__icon" style={{ background: "rgba(239,68,68,0.1)", color: "#ef4444" }}>
+          <article className="preferences-row tap-row" data-row-tap role="listitem">
+            <div
+              className="preferences-row__icon"
+              style={{ background: "#FDECEA", color: "#D93025" }}
+              aria-hidden="true"
+            >
               <BellIcon />
             </div>
-            <div className="settings-row__body">
-              <p className="settings-row__title">Risk Notifications</p>
-              <p className="settings-row__sub">Outbreak alerts &amp; warnings</p>
+            <div className="preferences-row__body">
+              <p className="preferences-row__title">Risk Notifications</p>
+              <p className="preferences-row__subtitle">Outbreak alerts &amp; warnings</p>
             </div>
-            <div className="settings-row__value">
+            <div className="preferences-row__value">
               Enabled
               <ChevronRightIcon />
             </div>
-          </div>
+          </article>
 
-          <div className="settings-row">
-            <div className="settings-row__icon" style={{ background: "rgba(21,128,61,0.1)", color: "#15803d" }}>
+          <article className="preferences-row tap-row" data-row-tap role="listitem">
+            <div
+              className="preferences-row__icon"
+              style={{ background: "#E8F5EE", color: "#1A7F45" }}
+              aria-hidden="true"
+            >
               <WifiIcon />
             </div>
-            <div className="settings-row__body">
-              <p className="settings-row__title">Offline Sync</p>
-              <p className="settings-row__sub">Model and data caching</p>
+            <div className="preferences-row__body">
+              <p className="preferences-row__title">Offline Sync</p>
+              <p className="preferences-row__subtitle">Model and data caching</p>
             </div>
-            <div className="settings-row__value">
+            <div className="preferences-row__value">
               WiFi + Mobile
               <ChevronRightIcon />
             </div>
-          </div>
+          </article>
 
-          <div className="settings-row">
-            <div className="settings-row__icon" style={{ background: "rgba(21,128,61,0.1)", color: "#15803d" }}>
+          <article className="preferences-row tap-row" data-row-tap role="listitem">
+            <div
+              className="preferences-row__icon"
+              style={{ background: "#E8F5EE", color: "#1A7F45" }}
+              aria-hidden="true"
+            >
               <LeafIcon />
             </div>
-            <div className="settings-row__body">
-              <p className="settings-row__title">Primary Crop</p>
+            <div className="preferences-row__body">
+              <p className="preferences-row__title">Primary Crop</p>
+              <p className="preferences-row__subtitle">Main monitored crop</p>
             </div>
-            <div className="settings-row__value">
+            <div className="preferences-row__value">
               {profile.primaryCrop}
               <ChevronRightIcon />
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ABOUT */}
-      <section aria-label="About">
-        <p className="settings-group-label">About</p>
-        <div className="settings-group">
-          <div className="settings-row">
-            <div className="settings-row__icon" style={{ background: "rgba(99,102,241,0.1)", color: "#6366f1" }}>
-              <InfoIcon />
-            </div>
-            <div className="settings-row__body">
-              <p className="settings-row__title">CropGuard Version</p>
-            </div>
-            <div className="settings-row__value" style={{ color: "var(--text-tertiary)" }}>
-              1.0.0
-            </div>
-          </div>
-
-          <div className="settings-row">
-            <div className="settings-row__icon" style={{ background: "rgba(99,102,241,0.1)", color: "#6366f1" }}>
-              <CpuIcon />
-            </div>
-            <div className="settings-row__body">
-              <p className="settings-row__title">AI Model</p>
-            </div>
-            <div className="settings-row__value" style={{ color: "var(--text-tertiary)" }}>
-              PlantNet v2
-            </div>
-          </div>
+          </article>
         </div>
       </section>
     </div>

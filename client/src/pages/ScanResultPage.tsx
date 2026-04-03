@@ -5,7 +5,7 @@ export function ScanResultPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="page page-enter stack-lg">
+    <div className="page stack-lg">
       {/* RESULT HERO */}
       <section className="result-hero" aria-label="Diagnosis result">
         <div>
@@ -31,7 +31,10 @@ export function ScanResultPage() {
 
         <div className="result-tags">
           <span className="soft-tag">{latestScan.crop}</span>
-          <span className={`risk-pill risk-pill--${latestScan.severity}`}>
+          <span
+            className={`risk-pill risk-pill--${latestScan.severity}`}
+            data-haptic={latestScan.severity === "high" ? "medium" : "light"}
+          >
             {latestScan.severity.toUpperCase()} severity
           </span>
         </div>

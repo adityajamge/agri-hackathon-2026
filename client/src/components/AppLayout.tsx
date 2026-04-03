@@ -1,3 +1,4 @@
+import { useEffect, useState, type ReactNode } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { BottomNav } from "./BottomNav";
 
@@ -21,8 +22,8 @@ function getTitle(pathname: string): string {
 const BellIcon = () => (
   <svg
     viewBox="0 0 24 24"
-    width="22"
-    height="22"
+    width="24"
+    height="24"
     fill="none"
     stroke="currentColor"
     strokeWidth="1.8"
@@ -35,6 +36,22 @@ const BellIcon = () => (
   </svg>
 );
 
+function PageTransition({ children }: { children: ReactNode }) {
+  const [isActive, setIsActive] = useState(false);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      setIsActive(true);
+    });
+
+    return () => {
+      cancelAnimationFrame(frame);
+    };
+  }, []);
+
+  return <div className={isActive ? "page-enter page-enter-active" : "page-enter"}>{children}</div>;
+}
+
 export function AppLayout() {
   const location = useLocation();
   const title = getTitle(location.pathname);
@@ -42,30 +59,21 @@ export function AppLayout() {
 
   return (
     <div className="app-shell">
-      {/* ── Top bar: wordmark left, bell right ── */}
       {!isScanPage && (
         <header className="app-header" aria-label="App bar">
           <div className="app-header__bar">
-            {/* CropGuard wordmark — no icon square */}
-            <div className="app-header__icon">
-              <span className="brand-wordmark" aria-label="CropGuard">
+            <div className="app-header__brand-wrap">
+              <span className="app-header__brand" aria-label="CropGuard">
                 CropGuard
               </span>
             </div>
 
-            {/* Bell notification icon on right */}
-            <div className="app-header__icon app-header__icon--status">
+            <div className="app-header__actions">
               <button
                 type="button"
                 aria-label="Notifications"
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  padding: 0,
-                  display: "flex",
-                  color: "var(--text-secondary)",
-                  cursor: "pointer",
-                }}
+                className="icon-button"
+                data-haptic="light"
               >
                 <BellIcon />
               </button>
@@ -75,16 +83,17 @@ export function AppLayout() {
       )}
 
       <main className="page-content" role="main">
-        {/* iOS large-title: left-aligned, lives in the scroll view */}
-        {!isScanPage && (
-          <h1 className="page-large-title" aria-live="polite">
-            {title}
-          </h1>
-        )}
-        <Outlet />
+        <PageTransition key={location.pathname}>
+          {!isScanPage && (
+            <h1 className="page-large-title" aria-live="polite">
+              {title}
+            </h1>
+          )}
+          <Outlet />
+        </PageTransition>
       </main>
 
-      <BottomNav />
+      {!isScanPage && <BottomNav />}
     </div>
   );
 }

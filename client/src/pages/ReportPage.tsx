@@ -15,7 +15,7 @@ export function ReportPage() {
   };
 
   return (
-    <div className="page page-enter stack-lg">
+    <div className="page stack-lg">
       <section className="card stack-md">
         <div className="card-heading">
           <h3>Report local outbreak</h3>
