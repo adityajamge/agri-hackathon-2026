@@ -2,18 +2,20 @@
 :root {
   --app-bg: #f2f2f7;
   --card-bg: #ffffff;
-  --brand: #059669;
-  --brand-light: rgba(5, 150, 105, 0.12);
-  --brand-dark: #047857;
+  /* Deep Forest Green — used sparingly for CTAs, active states, accents */
+  --brand: #15803d;
+  --brand-mid: #166534;
+  --brand-light: rgba(21, 128, 61, 0.1);
+  --brand-dark: #14532d;
   --danger: #dc2626;
   --danger-bg: rgba(220, 38, 38, 0.1);
   --danger-text: #b91c1c;
   --warn: #d97706;
   --warn-bg: rgba(217, 119, 6, 0.12);
   --warn-text: #b45309;
-  --safe: #059669;
-  --safe-bg: rgba(5, 150, 105, 0.1);
-  --safe-text: #047857;
+  --safe: #15803d;
+  --safe-bg: rgba(21, 128, 61, 0.1);
+  --safe-text: #166534;
   --text-primary: #1c1c1e;
   --text-secondary: #6c6c70;
   --text-tertiary: #aeaeb2;
@@ -144,28 +146,34 @@ button { font: inherit; cursor: pointer; }
   justify-content: center;
 }
 
-.brand-mark {
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
-  background: linear-gradient(145deg, #059669, #34d399);
-  display: grid;
-  place-items: center;
-  font-size: 0.6rem;
+/* Native wordmark logo — replaces the square CG badge */
+.brand-wordmark {
+  font-size: 1.0625rem;
   font-weight: 800;
-  color: #fff;
-  letter-spacing: 0.05em;
-  box-shadow: 0 2px 8px rgba(5,150,105,0.4);
+  font-family: var(--font-display);
+  color: var(--brand);
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+/* Legacy brand-mark hidden (no longer rendered) */
+.brand-mark { display: none; }
+
+/* Large left-aligned page title sits inside page-content, not the nav bar */
+.page-large-title {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+  padding-top: 6px;
 }
 
 .app-header__title {
-  flex: 1;
-  text-align: center;
-  font-size: 1.0625rem;
-  font-weight: 600;
-  font-family: var(--font-system);
-  color: var(--text-primary);
-  letter-spacing: -0.01em;
+  /* hidden — title shown as large title in scroll area instead */
+  display: none;
 }
 
 .app-header__icon--status {
@@ -350,7 +358,7 @@ button { font: inherit; cursor: pointer; }
 .btn--primary {
   background: var(--brand);
   color: #fff;
-  box-shadow: 0 6px 20px rgba(5,150,105,0.3);
+  box-shadow: 0 6px 20px rgba(21,128,61,0.28);
 }
 
 .btn--ghost {
@@ -406,7 +414,7 @@ button { font: inherit; cursor: pointer; }
 
 .risk-card--high .risk-card__score { color: #dc2626; }
 .risk-card--medium .risk-card__score { color: #d97706; }
-.risk-card--low .risk-card__score { color: #059669; }
+.risk-card--low .risk-card__score { color: #15803d; }
 
 .risk-card__label {
   font-size: 0.8rem;
@@ -417,7 +425,7 @@ button { font: inherit; cursor: pointer; }
 
 .risk-card--high .risk-card__label { color: #dc2626; }
 .risk-card--medium .risk-card__label { color: #d97706; }
-.risk-card--low .risk-card__label { color: #059669; }
+.risk-card--low .risk-card__label { color: #15803d; }
 
 .risk-card__desc {
   font-size: 0.875rem;
@@ -450,8 +458,8 @@ button { font: inherit; cursor: pointer; }
   color: #d97706;
 }
 .risk-card--low .risk-card__badge {
-  background: rgba(5,150,105,0.15);
-  color: #059669;
+  background: rgba(21,128,61,0.14);
+  color: #15803d;
 }
 
 @keyframes pulseDanger {
@@ -685,7 +693,7 @@ button { font: inherit; cursor: pointer; }
   height: 56px;
   border-radius: 30px;
   font-size: 1rem;
-  box-shadow: 0 8px 24px rgba(5,150,105,0.35);
+  box-shadow: 0 8px 24px rgba(21,128,61,0.32);
 }
 
 /* Metrics grid (legacy compat) */
@@ -780,7 +788,7 @@ button { font: inherit; cursor: pointer; }
 .scan-bg-blur {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle, rgba(5,150,105,0.06) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(21,128,61,0.07) 0%, transparent 70%);
 }
 
 .scan-viewfinder {
@@ -820,7 +828,7 @@ button { font: inherit; cursor: pointer; }
   left: 4px;
   right: 4px;
   height: 1.5px;
-  background: linear-gradient(90deg, transparent, rgba(5,200,120,0.9), transparent);
+  background: linear-gradient(90deg, transparent, rgba(74,222,128,0.95), transparent);
   animation: scanline 2.4s linear infinite;
 }
 
@@ -830,13 +838,17 @@ button { font: inherit; cursor: pointer; }
   100% { top: calc(100% - 4px); opacity: 0; }
 }
 
+/* Bottom control tray: pitch-black translucent dark blur, no white */
 .scan-actions {
   width: 100%;
-  padding: 20px 24px 16px;
+  padding: 20px 24px calc(16px + var(--safe-bottom));
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 16px;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
 }
 
 .shutter-btn {
@@ -898,7 +910,7 @@ button { font: inherit; cursor: pointer; }
   content: "•";
   position: absolute;
   left: 0;
-  color: rgba(5,200,120,0.7);
+  color: rgba(74,222,128,0.8);
 }
 
 /* scanner-shell (old compat) */
@@ -908,24 +920,30 @@ button { font: inherit; cursor: pointer; }
 .tips-list { display: none; }
 
 /* ===== FORECAST PAGE ===== */
+/* Native white card with left accent border instead of full green block */
 .forecast-hero {
-  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 60%, #a7f3d0 100%);
-  border-radius: 24px;
-  padding: 20px;
+  background: var(--card-bg);
+  border-radius: 20px;
+  padding: 16px 18px;
   box-shadow: var(--card-shadow);
+  border-left: 4px solid var(--brand);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .forecast-hero h2 {
-  font-size: 1.4rem;
+  font-size: 1.15rem;
   font-weight: 800;
-  color: #064e3b;
-  margin-top: 4px;
+  color: var(--text-primary);
+  margin-top: 2px;
+  line-height: 1.2;
 }
 
 .forecast-hero p {
-  font-size: 0.85rem;
-  color: #065f46;
-  margin-top: 6px;
+  font-size: 0.825rem;
+  color: var(--text-secondary);
+  margin-top: 2px;
 }
 
 .forecast-list {
@@ -1001,39 +1019,42 @@ button { font: inherit; cursor: pointer; }
   height: 280px;
 }
 
+/* Premium minimal map placeholder — neutral light gray, NOT a CSS grid */
 .map-bg {
   width: 100%;
   height: 100%;
-  background:
-    radial-gradient(ellipse at 30% 40%, rgba(134,239,172,0.3) 0%, transparent 50%),
-    radial-gradient(ellipse at 70% 70%, rgba(253,186,116,0.2) 0%, transparent 45%),
-    radial-gradient(ellipse at 60% 20%, rgba(147,197,253,0.25) 0%, transparent 40%),
-    linear-gradient(160deg, #e8f5e9 0%, #dceefb 50%, #f0f4c3 100%);
   position: relative;
+  /* Muted cartographic palette: light stone → pale sage */
+  background: linear-gradient(160deg, #eaeaea 0%, #e4e8e3 40%, #dde3de 100%);
+  overflow: hidden;
 }
 
-/* Simulated road network */
+/* Organic territory shapes — not a grid */
 .map-bg::before {
   content: "";
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(255,255,255,0.55) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.55) 1px, transparent 1px),
-    linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
-  background-size: 80px 80px, 80px 80px, 20px 20px, 20px 20px;
+    /* Organic blobs simulating field parcels */
+    radial-gradient(ellipse 120px 70px at 20% 55%, rgba(200,215,200,0.7) 0%, transparent 100%),
+    radial-gradient(ellipse 90px 110px at 65% 30%, rgba(190,205,195,0.6) 0%, transparent 100%),
+    radial-gradient(ellipse 140px 60px at 80% 70%, rgba(205,218,205,0.65) 0%, transparent 100%),
+    radial-gradient(ellipse 80px 90px at 40% 80%, rgba(195,208,200,0.55) 0%, transparent 100%);
+  background-size: 100% 100%;
 }
 
-/* Simulated roads */
+/* Sparse road lines — wide gaps, looks like a map and not graph paper */
 .map-bg::after {
   content: "";
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(130deg, transparent 30%, rgba(255,255,255,0.7) 30.5%, rgba(255,255,255,0.7) 31.5%, transparent 32%),
-    linear-gradient(60deg, transparent 20%, rgba(255,255,255,0.5) 20.5%, rgba(255,255,255,0.5) 21.2%, transparent 21.7%),
-    linear-gradient(180deg, transparent 42%, rgba(255,255,255,0.6) 42.5%, rgba(255,255,255,0.6) 43.5%, transparent 44%);
+    /* Diagonal artery */
+    linear-gradient(138deg, transparent 36%, rgba(255,255,255,0.82) 36%, rgba(255,255,255,0.82) 37.5%, transparent 37.5%),
+    /* Horizontal road */
+    linear-gradient(180deg, transparent 48%, rgba(255,255,255,0.75) 48%, rgba(255,255,255,0.75) 49.8%, transparent 49.8%),
+    /* Vertical spur */
+    linear-gradient(90deg, transparent 58%, rgba(255,255,255,0.65) 58%, rgba(255,255,255,0.65) 59.5%, transparent 59.5%);
 }
 
 .map-canvas {
@@ -1083,7 +1104,7 @@ button { font: inherit; cursor: pointer; }
   color: #fff;
   display: grid;
   place-items: center;
-  box-shadow: 0 6px 20px rgba(5,150,105,0.4);
+  box-shadow: 0 6px 24px rgba(21,128,61,0.45);
   cursor: pointer;
   z-index: 10;
   transition: transform 0.12s ease, opacity 0.12s ease;

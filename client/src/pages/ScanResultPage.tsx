@@ -30,7 +30,7 @@ export function ScanResultPage() {
         </div>
 
         <div className="result-tags">
-          <span className="soft-tag">🌱 {latestScan.crop}</span>
+          <span className="soft-tag">{latestScan.crop}</span>
           <span className={`risk-pill risk-pill--${latestScan.severity}`}>
             {latestScan.severity.toUpperCase()} severity
           </span>
@@ -68,13 +68,13 @@ export function ScanResultPage() {
         </p>
         <div className="recommendation-grid">
           <article className="recommendation-card">
-            <p className="eyebrow">🌿 Bio Control First</p>
+            <p className="eyebrow">Bio Control First</p>
             <strong style={{ fontSize: "0.9rem", color: "var(--text-primary)", lineHeight: 1.4 }}>
               {latestScan.ecoOption}
             </strong>
           </article>
           <article className="recommendation-card">
-            <p className="eyebrow">⚗️ Chemical Backup</p>
+            <p className="eyebrow">Chemical Backup</p>
             <strong style={{ fontSize: "0.9rem", color: "var(--text-primary)", lineHeight: 1.4 }}>
               {latestScan.chemicalOption}
             </strong>
