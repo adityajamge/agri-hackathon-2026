@@ -1,61 +1,124 @@
-import { forecastWeek, regionalHotspots, riskRules } from "../data/mockData";
+import { forecastWeek, riskRules } from "../data/mockData";
+
+const weatherIconMap: Record<string, string> = {
+  high: "🌧️",
+  medium: "⛅",
+  low: "☀️",
+};
 
 export function ForecastPage() {
-  const highRiskDays = forecastWeek.filter((day) => day.risk === "high").length;
+  const highRiskDays = forecastWeek.filter((d) => d.risk === "high").length;
 
   return (
     <div className="page page-enter stack-lg">
-      <section className="forecast-summary">
-        <div>
-          <p className="eyebrow">Outbreak Window</p>
-          <h2>{highRiskDays} high-risk days in next 7 days</h2>
-          <p>
-            Plan preventive spray and field scouting before peak humidity days.
-          </p>
-        </div>
+      {/* HERO BANNER */}
+      <section className="forecast-hero" aria-label="Outbreak window summary">
+        <p className="eyebrow">Outbreak Window</p>
+        <h2>{highRiskDays} high-risk days in next 7 days</h2>
+        <p>Plan preventive spray and field scouting before peak humidity days.</p>
       </section>
 
-      <section className="forecast-grid">
-        {forecastWeek.map((day) => (
-          <article key={day.day} className="forecast-card">
-            <header>
-              <h3>{day.day}</h3>
-              <span className={`risk-pill risk-pill--${day.risk}`}>{day.risk}</span>
-            </header>
-            <p>{day.tempMin} C to {day.tempMax} C</p>
-            <p>Humidity: {day.humidity}%</p>
-            <p>Rain chance: {day.rainChance}%</p>
-            <p className="forecast-card__reason">{day.reason}</p>
-          </article>
-        ))}
-      </section>
+      {/* iOS-STYLE FORECAST LIST */}
+      <section aria-label="7-day forecast">
+        <p
+          style={{
+            fontSize: "0.72rem",
+            fontWeight: 700,
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+            color: "var(--text-secondary)",
+            padding: "0 4px 6px",
+          }}
+        >
+          Daily Risk Forecast
+        </p>
+        <div className="forecast-list" role="list">
+          {forecastWeek.map((day) => (
+            <div className="forecast-row" key={day.day} role="listitem">
+              {/* Left: Day + weather icon */}
+              <div className="forecast-day">
+                <span className="forecast-day__name">{day.day}</span>
+                <span className="forecast-day__icon" aria-hidden="true">
+                  {weatherIconMap[day.risk]}
+                </span>
+              </div>
 
-      <section className="card stack-md">
-        <div className="card-heading">
-          <h3>Regional risk map</h3>
-          <p>Prototype visual for nearby risk clusters</p>
-        </div>
+              {/* Center: Temps + details */}
+              <div className="forecast-temps">
+                <span className="forecast-temps__range">
+                  {day.tempMax}° / {day.tempMin}°
+                </span>
+                <span className="forecast-temps__detail">
+                  💧 {day.humidity}% · 🌧 {day.rainChance}%
+                </span>
+                <span
+                  style={{
+                    fontSize: "0.75rem",
+                    color: "var(--text-secondary)",
+                    marginTop: "1px",
+                  }}
+                >
+                  {day.reason}
+                </span>
+              </div>
 
-        <div className="map-canvas" role="img" aria-label="Regional risk map preview">
-          {regionalHotspots.map((spot) => (
-            <button
-              key={spot.id}
-              type="button"
-              className={`map-marker map-marker--${spot.severity}`}
-              style={{ left: `${spot.x}%`, top: `${spot.y}%` }}
-              aria-label={`${spot.label} hotspot`}
-            >
-              <span>{spot.reports}</span>
-            </button>
+              {/* Right: Risk pill */}
+              <div className="forecast-row__right">
+                <span className={`risk-pill risk-pill--${day.risk}`}>
+                  {day.risk.toUpperCase()}
+                </span>
+              </div>
+            </div>
           ))}
         </div>
       </section>
 
-      <section className="card stack-sm">
-        <h3>Risk engine logic</h3>
-        <ul className="tips-list">
+      {/* RISK ENGINE LOGIC */}
+      <section className="card stack-md" aria-label="Risk engine logic">
+        <div className="card-heading">
+          <h3>Risk Engine Logic</h3>
+          <p>How outbreak scores are calculated</p>
+        </div>
+        <ul
+          style={{
+            margin: 0,
+            padding: 0,
+            listStyle: "none",
+            display: "flex",
+            flexDirection: "column",
+            gap: "0.5px",
+            background: "var(--separator)",
+            borderRadius: 12,
+            overflow: "hidden",
+          }}
+        >
           {riskRules.map((rule) => (
-            <li key={rule}>{rule}</li>
+            <li
+              key={rule}
+              style={{
+                background: "var(--card-bg)",
+                padding: "11px 14px",
+                fontSize: "0.85rem",
+                color: "var(--text-primary)",
+                lineHeight: 1.5,
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 10,
+              }}
+            >
+              <span
+                style={{
+                  color: "var(--brand)",
+                  fontSize: "1rem",
+                  lineHeight: 1.3,
+                  flexShrink: 0,
+                }}
+                aria-hidden="true"
+              >
+                ●
+              </span>
+              {rule}
+            </li>
           ))}
         </ul>
       </section>
