@@ -85,6 +85,7 @@ function getDayLabel(date: string) {
 
 export function ForecastPage() {
   const [forecast, setForecast] = useState<WeatherForecastDay[]>([]);
+  const [selectedDay, setSelectedDay] = useState<WeatherForecastDay | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -106,6 +107,7 @@ export function ForecastPage() {
         }
 
         setForecast(response.forecast || []);
+        setSelectedDay((response.forecast || [])[0] || null);
       } catch (error) {
         if (!isMounted) {
           return;
@@ -131,6 +133,16 @@ export function ForecastPage() {
     () => forecast.filter((day) => day.risk_level === "HIGH").length,
     [forecast],
   );
+
+  const selectedRiskClass = selectedDay ? toRiskClass(selectedDay.risk_level) : "low";
+
+  const selectedDayDate = selectedDay
+    ? new Date(`${selectedDay.date}T00:00:00`).toLocaleDateString(undefined, {
+        weekday: "long",
+        day: "numeric",
+        month: "short",
+      })
+    : "";
 
   return (
     <div className="page stack-lg">
@@ -164,11 +176,18 @@ export function ForecastPage() {
               type="button"
               className="forecast-row"
               key={day.date}
+              onClick={() => setSelectedDay(day)}
               data-row-tap
               data-haptic={riskClass === "high" ? "medium" : "light"}
             >
               <div className="forecast-day">
                 <span className="forecast-day__name">{getDayLabel(day.date)}</span>
+                <span className="forecast-day__date">
+                  {new Date(`${day.date}T00:00:00`).toLocaleDateString(undefined, {
+                    day: "numeric",
+                    month: "short",
+                  })}
+                </span>
               </div>
 
               <div className="forecast-main">
@@ -199,6 +218,26 @@ export function ForecastPage() {
             );
           })}
         </div>
+
+        {selectedDay && (
+          <article className="forecast-detail-card" aria-live="polite">
+            <div className="forecast-detail-card__head">
+              <p className="forecast-detail-card__title">Selected Day Risk</p>
+              <span className={`risk-pill risk-pill--${selectedRiskClass}`}>
+                {selectedDay.risk_level}
+              </span>
+            </div>
+
+            <p className="forecast-detail-card__date">{selectedDayDate}</p>
+            <p className="forecast-detail-card__reason">{selectedDay.risk_reason}</p>
+
+            <div className="forecast-detail-card__meta">
+              <span>Temp: {Math.round(selectedDay.temperature)}°C</span>
+              <span>Humidity: {selectedDay.humidity}%</span>
+              <span>Rain chance: {selectedDay.precipitation_probability}%</span>
+            </div>
+          </article>
+        )}
       </section>
     </div>
   );

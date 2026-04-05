@@ -49,7 +49,30 @@ const scanResults = pgTable(
   }),
 );
 
+const communityReports = pgTable(
+  "community_reports",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    crop: text("crop").notNull(),
+    issue: text("issue").notNull(),
+    severity: text("severity").notNull(),
+    note: text("note").notNull().default(""),
+    latitude: real("latitude").notNull(),
+    longitude: real("longitude").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    createdIdx: index("community_reports_created_idx").on(table.createdAt),
+    userCreatedIdx: index("community_reports_user_created_idx").on(table.userId, table.createdAt),
+    locationIdx: index("community_reports_location_idx").on(table.latitude, table.longitude),
+  }),
+);
+
 module.exports = {
   users,
   scanResults,
+  communityReports,
 };

@@ -87,3 +87,50 @@ export interface CropAnalyzeResponse {
 export interface CropHistoryResponse {
   history: CropScanResult[];
 }
+
+export type CommunitySeverity = "low" | "medium" | "high";
+
+export interface CommunityReport {
+  id: string;
+  reporter: string;
+  crop: string;
+  issue: string;
+  severity: CommunitySeverity;
+  note: string;
+  latitude: number;
+  longitude: number;
+  createdAt: string;
+  distanceKm: number | null;
+}
+
+export interface CommunityReportsResponse {
+  reports: CommunityReport[];
+}
+
+export interface CreateCommunityReportPayload {
+  crop: string;
+  issue: string;
+  severity: CommunitySeverity;
+  note?: string;
+  latitude?: number;
+  longitude?: number;
+}
+
+export interface CreateCommunityReportResponse {
+  report: CommunityReport;
+}
+
+export interface ReverseGeocodeLocation {
+  latitude: number;
+  longitude: number;
+  displayName: string;
+  shortName: string;
+  village: string | null;
+  district: string | null;
+  state: string | null;
+  country: string | null;
+}
+
+export interface ReverseGeocodeResponse {
+  location: ReverseGeocodeLocation;
+}

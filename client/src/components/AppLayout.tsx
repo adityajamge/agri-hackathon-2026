@@ -1,5 +1,11 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Outlet, useLocation } from "react-router-dom";
+import { reverseGeocode } from "../services/location";
+import {
+  getSessionLocationLabel,
+  getSessionUser,
+  setSessionLocationLabel,
+} from "../services/session";
 import { BottomNav } from "./BottomNav";
 
 const pageTitles: Record<string, string> = {
@@ -36,6 +42,41 @@ const BellIcon = () => (
   </svg>
 );
 
+const LocationPinIcon = () => (
+  <svg
+    viewBox="0 0 24 24"
+    width="20"
+    height="20"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M12 22s7-6.5 7-12a7 7 0 1 0-14 0c0 5.5 7 12 7 12Z" />
+    <circle cx="12" cy="10" r="2.5" />
+  </svg>
+);
+
+function getFallbackLocationLabel(village?: string | null, district?: string | null) {
+  const villagePart = village?.trim() || "";
+  const districtPart = district?.trim() || "";
+  if (villagePart && districtPart) {
+    return `${villagePart}, ${districtPart}`;
+  }
+
+  if (districtPart) {
+    return districtPart;
+  }
+
+  if (villagePart) {
+    return villagePart;
+  }
+
+  return "Location unavailable";
+}
+
 function PageTransition({ children }: { children: ReactNode }) {
   const [isActive, setIsActive] = useState(false);
 
@@ -56,6 +97,60 @@ export function AppLayout() {
   const location = useLocation();
   const title = getTitle(location.pathname);
   const isScanPage = location.pathname === "/scan";
+  const sessionUser = useMemo(() => getSessionUser(), [location.pathname]);
+  const userLatitude = sessionUser?.latitude ?? null;
+  const userLongitude = sessionUser?.longitude ?? null;
+  const fallbackLocationLabel = getFallbackLocationLabel(sessionUser?.village, sessionUser?.district);
+
+  const [locationLabel, setLocationLabel] = useState(
+    () => getSessionLocationLabel() || fallbackLocationLabel,
+  );
+  const [isLocationPopoverOpen, setIsLocationPopoverOpen] = useState(false);
+
+  useEffect(() => {
+    setIsLocationPopoverOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const existingLabel = getSessionLocationLabel();
+    if (!existingLabel) {
+      setLocationLabel(fallbackLocationLabel);
+      return;
+    }
+
+    setLocationLabel(existingLabel);
+  }, [fallbackLocationLabel]);
+
+  useEffect(() => {
+    if (typeof userLatitude !== "number" || typeof userLongitude !== "number") {
+      return;
+    }
+
+    let isMounted = true;
+
+    const hydrateLocationLabel = async () => {
+      try {
+        const resolved = await reverseGeocode(userLatitude, userLongitude);
+        if (!isMounted) {
+          return;
+        }
+
+        const nextLabel = resolved.shortName || resolved.displayName;
+        if (nextLabel) {
+          setLocationLabel(nextLabel);
+          setSessionLocationLabel(nextLabel);
+        }
+      } catch {
+        // Keep fallback location when geocoding service is unavailable.
+      }
+    };
+
+    void hydrateLocationLabel();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [userLatitude, userLongitude]);
 
   return (
     <div className="app-shell" style={isScanPage ? { background: 'transparent' } : {}}>
@@ -71,6 +166,19 @@ export function AppLayout() {
             <div className="app-header__actions">
               <button
                 type="button"
+                aria-label="Current location"
+                className="location-chip"
+                onClick={() => setIsLocationPopoverOpen((open) => !open)}
+                data-haptic="light"
+              >
+                <span className="location-chip__icon" aria-hidden="true">
+                  <LocationPinIcon />
+                </span>
+                <span className="location-chip__text">{locationLabel}</span>
+              </button>
+
+              <button
+                type="button"
                 aria-label="Notifications"
                 className="icon-button"
                 data-haptic="light"
@@ -79,6 +187,12 @@ export function AppLayout() {
               </button>
             </div>
           </div>
+
+          {isLocationPopoverOpen && (
+            <div className="location-popover" role="status" aria-live="polite">
+              {locationLabel}
+            </div>
+          )}
         </header>
       )}
 

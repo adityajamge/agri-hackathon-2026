@@ -3,6 +3,7 @@ import type { AuthUser } from "./models";
 const TOKEN_KEY = "cropguard.authToken";
 const USER_KEY = "cropguard.authUser";
 const ONBOARDED_KEY = "cropguard.onboarded";
+const LOCATION_LABEL_KEY = "cropguard.locationLabel";
 
 function safeGetItem(key: string): string | null {
   try {
@@ -55,6 +56,7 @@ export function saveSession(token: string, user: AuthUser) {
   safeSetItem(TOKEN_KEY, token);
   safeSetItem(USER_KEY, JSON.stringify(user));
   safeSetItem(ONBOARDED_KEY, "true");
+  safeSetItem(LOCATION_LABEL_KEY, `${user.village}, ${user.district}`);
 
   safeSetItem(
     "cropguard.profile",
@@ -72,7 +74,22 @@ export function updateSessionUser(user: AuthUser) {
   safeSetItem(USER_KEY, JSON.stringify(user));
 }
 
+export function getSessionLocationLabel(): string | null {
+  const label = safeGetItem(LOCATION_LABEL_KEY);
+  return label && label.trim().length > 0 ? label : null;
+}
+
+export function setSessionLocationLabel(label: string) {
+  const cleanLabel = label.trim();
+  if (!cleanLabel) {
+    return;
+  }
+
+  safeSetItem(LOCATION_LABEL_KEY, cleanLabel);
+}
+
 export function clearSession() {
   safeRemoveItem(TOKEN_KEY);
   safeRemoveItem(USER_KEY);
+  safeRemoveItem(LOCATION_LABEL_KEY);
 }

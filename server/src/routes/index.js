@@ -2,6 +2,8 @@ const express = require("express");
 const authRoutes = require("./auth");
 const weatherRoutes = require("./weather");
 const cropRoutes = require("./crop");
+const communityRoutes = require("./community");
+const locationRoutes = require("./location");
 
 const apiRouter = express.Router();
 
@@ -16,6 +18,8 @@ apiRouter.get("/health", (req, res) => {
 apiRouter.use("/auth", authRoutes);
 apiRouter.use("/weather", weatherRoutes);
 apiRouter.use("/crop", cropRoutes);
+apiRouter.use("/community", communityRoutes);
+apiRouter.use("/location", locationRoutes);
 
 module.exports = {
   apiRouter,
