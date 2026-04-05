@@ -1,13 +1,15 @@
 .leaf-scan-screen {
   --frame-width: 78%;
   --frame-height: 52vh;
-  min-height: 100vh;
-  min-height: 100dvh;
-  background-color: #000000;
+  position: fixed;
+  inset: 0;
+  background-color: transparent;
   display: flex;
   flex-direction: column;
   color: #ffffff;
   overflow: hidden;
+  touch-action: none;
+  z-index: 50;
 }
 
 .leaf-scan-topbar {

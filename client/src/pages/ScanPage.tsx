@@ -1,8 +1,80 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { CameraPreview, type CameraPreviewOptions } from "@capacitor-community/camera-preview";
+import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import "./ScanPage.css";
 
 export function ScanPage() {
   const navigate = useNavigate();
+  const [flashOn, setFlashOn] = useState(false);
+
+  useEffect(() => {
+    // Make DOM layers transparent to reveal camera behind Webview
+    const bodyBg = document.body.style.backgroundColor;
+    const htmlBg = document.documentElement.style.backgroundColor;
+    const root = document.getElementById("root");
+    const rootBg = root ? root.style.backgroundColor : "";
+
+    document.documentElement.style.backgroundColor = "transparent";
+    document.body.style.backgroundColor = "transparent";
+    if (root) root.style.backgroundColor = "transparent";
+
+    const startCamera = async () => {
+      try {
+        const cameraPreviewOptions: CameraPreviewOptions = {
+          position: "rear",
+          toBack: true,
+          disableAudio: true,
+          enableHighResolution: true,
+        };
+        await CameraPreview.start(cameraPreviewOptions);
+      } catch (err) {
+        console.warn("Camera start failed", err);
+      }
+    };
+    
+    startCamera();
+
+    return () => {
+      CameraPreview.stop().catch(() => {});
+      document.documentElement.style.backgroundColor = htmlBg;
+      document.body.style.backgroundColor = bodyBg;
+      if (root) root.style.backgroundColor = rootBg;
+    };
+  }, []);
+
+  const toggleFlash = async () => {
+    const nextMode = !flashOn;
+    setFlashOn(nextMode);
+    try {
+      await CameraPreview.setFlashMode({ flashMode: nextMode ? "torch" : "off" });
+    } catch(err) {
+      console.warn("Flash toggle failed", err);
+    }
+  };
+
+  const capturePhoto = async () => {
+    try {
+      const result = await CameraPreview.capture({ quality: 90 });
+      navigate("/scan/result", { state: { image: `data:image/jpeg;base64,${result.value}` } });
+    } catch (err) {
+      console.warn("Capture failed", err);
+    }
+  };
+
+  const uploadGallery = async () => {
+    try {
+      const photo = await Camera.getPhoto({
+        quality: 90,
+        allowEditing: false,
+        resultType: CameraResultType.Base64,
+        source: CameraSource.Photos
+      });
+      navigate("/scan/result", { state: { image: `data:image/jpeg;base64,${photo.base64String}` } });
+    } catch (err) {
+      console.warn("Gallery upload failed", err);
+    }
+  };
 
   return (
     <div className="leaf-scan-screen" role="main" aria-label="Leaf scanner">
@@ -26,9 +98,11 @@ export function ScanPage() {
           className="leaf-scan-top-button"
           aria-label="Toggle flash"
           data-haptic="light"
+          onClick={toggleFlash}
+          style={{ opacity: flashOn ? 1.0 : 0.6 }}
         >
           <svg viewBox="0 0 24 24">
-            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill={flashOn ? "currentColor" : "none"} strokeWidth={flashOn ? "0" : "2"} />
           </svg>
         </button>
       </header>
@@ -65,7 +139,7 @@ export function ScanPage() {
           type="button"
           className="leaf-scan-shutter"
           id="btn-shutter"
-          onClick={() => navigate("/scan/result")}
+          onClick={capturePhoto}
           aria-label="Take photo and scan"
           data-haptic="medium"
         >
@@ -76,6 +150,7 @@ export function ScanPage() {
           type="button"
           className="leaf-scan-upload"
           id="btn-gallery"
+          onClick={uploadGallery}
           aria-label="Upload from gallery"
           data-haptic="light"
         >

@@ -58,7 +58,7 @@ export function AppLayout() {
   const isScanPage = location.pathname === "/scan";
 
   return (
-    <div className="app-shell">
+    <div className="app-shell" style={isScanPage ? { background: 'transparent' } : {}}>
       {!isScanPage && (
         <header className="app-header" aria-label="App bar">
           <div className="app-header__bar">
@@ -82,7 +82,7 @@ export function AppLayout() {
         </header>
       )}
 
-      <main className="page-content" role="main">
+      <main className="page-content" role="main" style={isScanPage ? { padding: 0, background: 'transparent' } : {}}>
         <PageTransition key={location.pathname}>
           {!isScanPage && (
             <h1 className="page-large-title" aria-live="polite">
