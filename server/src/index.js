@@ -7,11 +7,39 @@ const { errorHandler, notFoundHandler } = require("./middlewares/error");
 
 const app = express();
 
+const localhostOriginPattern = /^https?:\/\/localhost(?::\d+)?$/i;
+const localAppOrigins = new Set([
+  "http://localhost",
+  "https://localhost",
+  "capacitor://localhost",
+  "ionic://localhost",
+]);
+
 const allowedOrigins = env.CORS_ORIGIN === "*"
   ? "*"
   : env.CORS_ORIGIN.split(",")
       .map((origin) => origin.trim())
       .filter(Boolean);
+
+function isAllowedOrigin(origin) {
+  if (allowedOrigins === "*") {
+    return true;
+  }
+
+  if (allowedOrigins.includes(origin)) {
+    return true;
+  }
+
+  if (localAppOrigins.has(origin)) {
+    return true;
+  }
+
+  if (localhostOriginPattern.test(origin)) {
+    return true;
+  }
+
+  return false;
+}
 
 app.use(
   cors({
@@ -20,7 +48,7 @@ app.use(
         return callback(null, true);
       }
 
-      if (allowedOrigins === "*" || allowedOrigins.includes(origin)) {
+      if (isAllowedOrigin(origin)) {
         return callback(null, true);
       }
 

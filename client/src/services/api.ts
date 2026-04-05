@@ -41,6 +41,10 @@ function resolveApiBaseUrl() {
 
 export const API_BASE_URL = resolveApiBaseUrl();
 
+function shouldBypassNgrokWarning(url: string) {
+  return /\.ngrok-free\.dev|\.ngrok\.io/i.test(url);
+}
+
 function parseJsonSafe(text: string): unknown {
   if (!text) {
     return undefined;
@@ -56,14 +60,22 @@ function parseJsonSafe(text: string): unknown {
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const urlPath = path.startsWith("/") ? path : `/${path}`;
   const url = `${API_BASE_URL}${urlPath}`;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(options.headers || {}),
+  };
+
+  if (shouldBypassNgrokWarning(url)) {
+    headers["ngrok-skip-browser-warning"] = "true";
+  }
+
+  if (options.token) {
+    headers.Authorization = `Bearer ${options.token}`;
+  }
 
   const response = await fetch(url, {
     method: options.method || "GET",
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.token ? { Authorization: `Bearer ${options.token}` } : {}),
-      ...(options.headers || {}),
-    },
+    headers,
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
     signal: options.signal,
   });
