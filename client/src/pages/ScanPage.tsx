@@ -21,13 +21,25 @@ export function ScanPage() {
 
     const startCamera = async () => {
       try {
-        const cameraPreviewOptions: CameraPreviewOptions = {
-          position: "rear",
-          toBack: true,
-          disableAudio: true,
-          enableHighResolution: true,
-        };
-        await CameraPreview.start(cameraPreviewOptions);
+        // Request camera permissions first
+        let status = await Camera.checkPermissions();
+        if (status.camera !== "granted") {
+          status = await Camera.requestPermissions({ permissions: ["camera"] });
+        }
+
+        if (status.camera === "granted") {
+          const cameraPreviewOptions: CameraPreviewOptions = {
+            position: "rear",
+            toBack: true,
+            disableAudio: true,
+            enableHighResolution: true,
+            parent: "camera-preview-web",
+            className: "camera-preview-web-video",
+          };
+          await CameraPreview.start(cameraPreviewOptions);
+        } else {
+          console.warn("Camera permission denied by user");
+        }
       } catch (err) {
         console.warn("Camera start failed", err);
       }
@@ -64,13 +76,22 @@ export function ScanPage() {
 
   const uploadGallery = async () => {
     try {
-      const photo = await Camera.getPhoto({
-        quality: 90,
-        allowEditing: false,
-        resultType: CameraResultType.Base64,
-        source: CameraSource.Photos
-      });
-      navigate("/scan/result", { state: { image: `data:image/jpeg;base64,${photo.base64String}` } });
+      let status = await Camera.checkPermissions();
+      if (status.photos !== "granted") {
+        status = await Camera.requestPermissions({ permissions: ["photos"] });
+      }
+
+      if (status.photos === "granted" || status.photos === "limited") {
+        const photo = await Camera.getPhoto({
+          quality: 90,
+          allowEditing: false,
+          resultType: CameraResultType.Base64,
+          source: CameraSource.Photos
+        });
+        navigate("/scan/result", { state: { image: `data:image/jpeg;base64,${photo.base64String}` } });
+      } else {
+        console.warn("Photos permission denied by user");
+      }
     } catch (err) {
       console.warn("Gallery upload failed", err);
     }
@@ -78,6 +99,7 @@ export function ScanPage() {
 
   return (
     <div className="leaf-scan-screen" role="main" aria-label="Leaf scanner">
+      <div id="camera-preview-web" style={{ position: 'absolute', inset: 0, zIndex: -1 }} />
       <header className="leaf-scan-topbar">
         <button
           type="button"
@@ -126,36 +148,38 @@ export function ScanPage() {
         </div>
       </section>
 
-      <p className="leaf-scan-instruction">Align the infected leaf inside the frame</p>
+      <div className="leaf-scan-bottom">
+        <p className="leaf-scan-instruction">Align the infected leaf inside the frame</p>
 
-      <div className="leaf-scan-tips" role="note" aria-label="Scanning tips">
-        <p className="leaf-scan-tip">Keep the leaf flat and in focus</p>
-        <p className="leaf-scan-tip">Capture in daylight for best accuracy</p>
-        <p className="leaf-scan-tip">Scan both old and new lesions</p>
-      </div>
+        <div className="leaf-scan-tips" role="note" aria-label="Scanning tips">
+          <p className="leaf-scan-tip">Keep the leaf flat and in focus</p>
+          <p className="leaf-scan-tip">Capture in daylight for best accuracy</p>
+          <p className="leaf-scan-tip">Scan both old and new lesions</p>
+        </div>
 
-      <div className="leaf-scan-actions">
-        <button
-          type="button"
-          className="leaf-scan-shutter"
-          id="btn-shutter"
-          onClick={capturePhoto}
-          aria-label="Take photo and scan"
-          data-haptic="medium"
-        >
-          <div className="leaf-scan-shutter-inner" aria-hidden="true" />
-        </button>
+        <div className="leaf-scan-actions">
+          <button
+            type="button"
+            className="leaf-scan-shutter"
+            id="btn-shutter"
+            onClick={capturePhoto}
+            aria-label="Take photo and scan"
+            data-haptic="medium"
+          >
+            <div className="leaf-scan-shutter-inner" aria-hidden="true" />
+          </button>
 
-        <button
-          type="button"
-          className="leaf-scan-upload"
-          id="btn-gallery"
-          onClick={uploadGallery}
-          aria-label="Upload from gallery"
-          data-haptic="light"
-        >
-          Upload from Gallery
-        </button>
+          <button
+            type="button"
+            className="leaf-scan-upload"
+            id="btn-gallery"
+            onClick={uploadGallery}
+            aria-label="Upload from gallery"
+            data-haptic="light"
+          >
+            Upload from Gallery
+          </button>
+        </div>
       </div>
     </div>
   );

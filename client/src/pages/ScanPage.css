@@ -1,8 +1,9 @@
 .leaf-scan-screen {
   --frame-width: 78%;
   --frame-height: 52vh;
-  position: fixed;
-  inset: 0;
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
   background-color: transparent;
   display: flex;
   flex-direction: column;
@@ -12,12 +13,19 @@
   z-index: 50;
 }
 
+.camera-preview-web-video {
+  width: 100vw;
+  height: 100vh;
+  object-fit: cover;
+}
+
 .leaf-scan-topbar {
   padding: calc(env(safe-area-inset-top) + 12px) 12px 8px;
   display: grid;
   grid-template-columns: 40px 1fr 40px;
   align-items: center;
   gap: 10px;
+  background-color: #000000;
 }
 
 .leaf-scan-title {
@@ -64,7 +72,7 @@
 
 .leaf-scan-overlay-top {
   flex: 1;
-  background: rgba(0, 0, 0, 0.55);
+  background: #000000;
 }
 
 .leaf-scan-frame-row {
@@ -75,7 +83,7 @@
 
 .leaf-scan-overlay-side {
   flex: 1;
-  background: rgba(0, 0, 0, 0.55);
+  background: #000000;
 }
 
 .leaf-scan-frame-window {
@@ -170,6 +178,13 @@
     top: 4px;
     opacity: 1;
   }
+}
+
+.leaf-scan-bottom {
+  background-color: #000000;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 }
 
 .leaf-scan-instruction {
