@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { weatherNow } from "../data/mockData";
-
-const riskScore = 82;
+import { fetchWeatherRisk } from "../services/weather";
+import { getSessionUser } from "../services/session";
+import type { WeatherRiskResponse } from "../services/models";
 
 const ThermometerIcon = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -63,38 +63,84 @@ const CloudIcon = () => (
   </svg>
 );
 
-const weatherItems = [
-  {
-    label: "Temperature",
-    value: `${weatherNow.temperatureC}°C`,
-    tintClass: "weather-widget__icon-wrap--temp",
-    icon: <ThermometerIcon />,
-  },
-  {
-    label: "Humidity",
-    value: `${weatherNow.humidityPct}%`,
-    tintClass: "weather-widget__icon-wrap--humidity",
-    icon: <DropletIcon />,
-  },
-  {
-    label: "Rainfall",
-    value: `${weatherNow.rainfallMm} mm`,
-    tintClass: "weather-widget__icon-wrap--rain",
-    icon: <CloudRainIcon />,
-  },
-  {
-    label: "Wind",
-    value: `${weatherNow.windKph} km/h`,
-    tintClass: "weather-widget__icon-wrap--wind",
-    icon: <WindIcon />,
-  },
-];
+function toRiskClass(level: WeatherRiskResponse["risk_level"] | undefined) {
+  if (level === "HIGH") return "high";
+  if (level === "MEDIUM") return "medium";
+  return "low";
+}
+
+function computeRiskScore(weather: WeatherRiskResponse | null) {
+  if (!weather) {
+    return 0;
+  }
+
+  if (weather.risk_level === "HIGH") {
+    const score = weather.humidity + (weather.rainfall_expected ? 12 : 4);
+    return Math.max(80, Math.min(98, Math.round(score)));
+  }
+
+  if (weather.risk_level === "MEDIUM") {
+    const score = (weather.temperature + weather.humidity) / 2;
+    return Math.max(50, Math.min(79, Math.round(score)));
+  }
+
+  return Math.max(15, Math.min(49, Math.round(weather.humidity * 0.45)));
+}
 
 export function DashboardPage() {
   const navigate = useNavigate();
+  const [weather, setWeather] = useState<WeatherRiskResponse | null>(null);
+  const [weatherError, setWeatherError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [animatedScore, setAnimatedScore] = useState(0);
 
+  const sessionUser = getSessionUser();
+  const latitude = sessionUser?.latitude ?? 18.52;
+  const longitude = sessionUser?.longitude ?? 73.85;
+
   useEffect(() => {
+    let isMounted = true;
+
+    const loadWeather = async () => {
+      setIsLoading(true);
+      setWeatherError(null);
+
+      try {
+        const response = await fetchWeatherRisk(latitude, longitude);
+        if (!isMounted) {
+          return;
+        }
+
+        setWeather(response);
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        const message = error instanceof Error ? error.message : "Failed to load weather risk";
+        setWeatherError(message);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void loadWeather();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [latitude, longitude]);
+
+  const targetRiskScore = useMemo(() => computeRiskScore(weather), [weather]);
+
+  useEffect(() => {
+    if (targetRiskScore <= 0) {
+      setAnimatedScore(0);
+      return;
+    }
+
     const durationMs = 600;
     const start = performance.now();
 
@@ -104,7 +150,7 @@ export function DashboardPage() {
       const progress = Math.min(elapsed / durationMs, 1);
       const eased = 1 - (1 - progress) ** 3;
 
-      setAnimatedScore(Math.round(riskScore * eased));
+      setAnimatedScore(Math.round(targetRiskScore * eased));
 
       if (progress < 1) {
         rafId = requestAnimationFrame(animate);
@@ -116,7 +162,38 @@ export function DashboardPage() {
     return () => {
       cancelAnimationFrame(rafId);
     };
-  }, []);
+  }, [targetRiskScore]);
+
+  const rainfallToday = weather?.forecast?.[0]?.precipitation_sum_mm ?? 0;
+  const riskClass = toRiskClass(weather?.risk_level);
+  const riskLabel = weather?.risk_level || "LOW";
+
+  const weatherItems = [
+    {
+      label: "Temperature",
+      value: weather ? `${weather.temperature}°C` : "--",
+      tintClass: "weather-widget__icon-wrap--temp",
+      icon: <ThermometerIcon />,
+    },
+    {
+      label: "Humidity",
+      value: weather ? `${weather.humidity}%` : "--",
+      tintClass: "weather-widget__icon-wrap--humidity",
+      icon: <DropletIcon />,
+    },
+    {
+      label: "Rainfall",
+      value: weather ? `${rainfallToday.toFixed(1)} mm` : "--",
+      tintClass: "weather-widget__icon-wrap--rain",
+      icon: <CloudRainIcon />,
+    },
+    {
+      label: "Outbreak Risk",
+      value: riskLabel,
+      tintClass: "weather-widget__icon-wrap--wind",
+      icon: <WindIcon />,
+    },
+  ];
 
   return (
     <div className="page stack-lg">
@@ -126,10 +203,19 @@ export function DashboardPage() {
           <p className="radar-risk-score" aria-live="polite">
             {animatedScore}
           </p>
-          <span className="radar-risk-chip" role="button" tabIndex={0} data-haptic="medium">
-            HIGH RISK
+          <span
+            className={`radar-risk-chip risk-pill risk-pill--${riskClass}`}
+            role="button"
+            tabIndex={0}
+            data-haptic="medium"
+          >
+            {riskLabel} RISK
           </span>
-          <p className="card-body-text">{weatherNow.summary}</p>
+          <p className="card-body-text">
+            {isLoading && "Fetching latest local risk signal..."}
+            {!isLoading && weather && weather.risk_reason}
+            {!isLoading && !weather && weatherError && weatherError}
+          </p>
         </div>
 
         <div

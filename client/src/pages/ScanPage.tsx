@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { CameraPreview, type CameraPreviewOptions } from "@capacitor-community/camera-preview";
-import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
+import { Camera } from "@capacitor/camera";
+import { capturePhotoWithCamera, pickPhotoFromGallery } from "../services/cropHealth";
 import "./ScanPage.css";
 
 export function ScanPage() {
@@ -70,28 +71,20 @@ export function ScanPage() {
       const result = await CameraPreview.capture({ quality: 90 });
       navigate("/scan/result", { state: { image: `data:image/jpeg;base64,${result.value}` } });
     } catch (err) {
-      console.warn("Capture failed", err);
+      try {
+        // Fallback for devices where preview capture is unstable.
+        const image = await capturePhotoWithCamera();
+        navigate("/scan/result", { state: { image } });
+      } catch (fallbackErr) {
+        console.warn("Capture failed", err, fallbackErr);
+      }
     }
   };
 
   const uploadGallery = async () => {
     try {
-      let status = await Camera.checkPermissions();
-      if (status.photos !== "granted") {
-        status = await Camera.requestPermissions({ permissions: ["photos"] });
-      }
-
-      if (status.photos === "granted" || status.photos === "limited") {
-        const photo = await Camera.getPhoto({
-          quality: 90,
-          allowEditing: false,
-          resultType: CameraResultType.Base64,
-          source: CameraSource.Photos
-        });
-        navigate("/scan/result", { state: { image: `data:image/jpeg;base64,${photo.base64String}` } });
-      } else {
-        console.warn("Photos permission denied by user");
-      }
+      const image = await pickPhotoFromGallery();
+      navigate("/scan/result", { state: { image } });
     } catch (err) {
       console.warn("Gallery upload failed", err);
     }

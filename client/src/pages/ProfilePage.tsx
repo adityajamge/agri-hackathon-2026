@@ -1,22 +1,16 @@
-import { useMemo } from "react";
-import { defaultProfile, scanHistory } from "../data/mockData";
-import type { UserProfile } from "../types/app";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { fetchScanHistory } from "../services/cropHealth";
+import { clearSession, getSessionUser } from "../services/session";
+import type { CropScanResult } from "../services/models";
 
-function getStoredProfile(): UserProfile {
-  try {
-    const raw = localStorage.getItem("cropguard.profile");
-    if (!raw) return defaultProfile;
-    const parsed = JSON.parse(raw) as Partial<UserProfile>;
-    return {
-      farmName: parsed.farmName ?? defaultProfile.farmName,
-      village: parsed.village ?? defaultProfile.village,
-      district: parsed.district ?? defaultProfile.district,
-      primaryCrop: parsed.primaryCrop ?? defaultProfile.primaryCrop,
-      language: parsed.language ?? defaultProfile.language,
-    };
-  } catch {
-    return defaultProfile;
+function formatDate(value: string) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
   }
+
+  return parsed.toLocaleDateString();
 }
 
 // ─── SVG icons ───────────────────────────────────────────────────────────────
@@ -62,7 +56,57 @@ const ChevronRightIcon = () => (
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function ProfilePage() {
-  const profile = useMemo(() => getStoredProfile(), []);
+  const navigate = useNavigate();
+  const [history, setHistory] = useState<CropScanResult[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+
+  const sessionUser = getSessionUser();
+  const profile = useMemo(
+    () => ({
+      farmName: sessionUser?.farmName || "My Farm",
+      village: sessionUser?.village || "Unknown Village",
+      district: sessionUser?.district || "Unknown District",
+      primaryCrop: sessionUser?.primaryCrop || "Unknown Crop",
+      language: "English",
+    }),
+    [sessionUser],
+  );
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadHistory = async () => {
+      setIsLoadingHistory(true);
+      setHistoryError(null);
+
+      try {
+        const response = await fetchScanHistory(20);
+        if (!isMounted) {
+          return;
+        }
+
+        setHistory(response.history || []);
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        const message = error instanceof Error ? error.message : "Failed to load scan history";
+        setHistoryError(message);
+      } finally {
+        if (isMounted) {
+          setIsLoadingHistory(false);
+        }
+      }
+    };
+
+    void loadHistory();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Generate initials for circular avatar
   const initials = profile.farmName
@@ -89,29 +133,44 @@ export function ProfilePage() {
 
       <section aria-label="Detection history">
         <p className="section-label">DETECTION HISTORY</p>
+
+        {isLoadingHistory && <p className="card-body-text">Loading scan history...</p>}
+        {!isLoadingHistory && historyError && <p className="card-body-text">{historyError}</p>}
+
         <div className="native-list-card" role="list">
-          {scanHistory.map((entry) => (
+          {history.map((entry) => (
             <article
               key={entry.id}
               className="history-item tap-row"
               role="listitem"
               data-row-tap
-              data-haptic={entry.confidence >= 90 ? "medium" : "light"}
+              data-haptic={entry.confidence_percent >= 90 ? "medium" : "light"}
             >
               <div className="history-item__left">
-                <p className="history-item__title">{entry.issue}</p>
+                <p className="history-item__title">{entry.diseaseName}</p>
                 <p className="history-item__meta">
-                  {entry.crop} · {entry.date}
+                  {entry.cropName || "Unknown crop"} · {formatDate(entry.createdAt)}
                 </p>
               </div>
               <div className="history-item__right">
                 <span className="history-item__confidence">
-                  {entry.confidence}%
+                  {entry.confidence_percent}%
                 </span>
-                <span className="history-item__outcome">{entry.outcome}</span>
+                <span className="history-item__outcome">
+                  {entry.isHealthy ? "Healthy" : "Treatment advised"}
+                </span>
               </div>
             </article>
           ))}
+
+          {!isLoadingHistory && history.length === 0 && !historyError && (
+            <article className="history-item" role="listitem">
+              <div className="history-item__left">
+                <p className="history-item__title">No scans yet</p>
+                <p className="history-item__meta">Run your first crop scan to build history.</p>
+              </div>
+            </article>
+          )}
         </div>
       </section>
 
@@ -190,6 +249,19 @@ export function ProfilePage() {
             </div>
           </article>
         </div>
+      </section>
+
+      <section aria-label="Account actions">
+        <button
+          type="button"
+          className="btn btn--ghost"
+          onClick={() => {
+            clearSession();
+            navigate("/onboarding", { replace: true });
+          }}
+        >
+          Sign Out
+        </button>
       </section>
     </div>
   );

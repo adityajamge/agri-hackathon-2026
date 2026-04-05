@@ -10,23 +10,36 @@ import { ProfilePage } from "./pages/ProfilePage";
 import { ReportPage } from "./pages/ReportPage";
 import { ScanPage } from "./pages/ScanPage";
 import { ScanResultPage } from "./pages/ScanResultPage";
+import { hasSession } from "./services/session";
 import { triggerHaptic } from "./utils/haptics";
 
-function hasCompletedOnboarding() {
-  try {
-    return localStorage.getItem("cropguard.onboarded") === "true";
-  } catch {
-    return false;
-  }
+function hasActiveSession() {
+  return hasSession();
 }
 
 function EntryRedirect() {
   return (
     <Navigate
-      to={hasCompletedOnboarding() ? "/dashboard" : "/onboarding"}
+      to={hasActiveSession() ? "/dashboard" : "/onboarding"}
       replace
     />
   );
+}
+
+function OnboardingRoute() {
+  if (hasActiveSession()) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <OnboardingPage />;
+}
+
+function ProtectedLayoutRoute() {
+  if (!hasActiveSession()) {
+    return <Navigate to="/onboarding" replace />;
+  }
+
+  return <AppLayout />;
 }
 
 function App() {
@@ -77,9 +90,9 @@ function App() {
     <HashRouter>
       <Routes>
         <Route path="/" element={<EntryRedirect />} />
-        <Route path="/onboarding" element={<OnboardingPage />} />
+        <Route path="/onboarding" element={<OnboardingRoute />} />
 
-        <Route element={<AppLayout />}>
+        <Route element={<ProtectedLayoutRoute />}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/scan" element={<ScanPage />} />
           <Route path="/scan/result" element={<ScanResultPage />} />

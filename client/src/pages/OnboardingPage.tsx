@@ -1,10 +1,16 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
+import { Capacitor } from "@capacitor/core";
+import { Geolocation } from "@capacitor/geolocation";
 import { cropOptions } from "../data/mockData";
+import { ApiRequestError } from "../services/api";
+import { registerUser } from "../services/auth";
+import { saveSession } from "../services/session";
 import "./OnboardingPage.css";
 
 type LocationMode = "gps" | "manual";
 type TransitionPhase = "entered" | "exiting" | "entering";
+type Coordinates = { latitude: number; longitude: number };
 
 type HeroVariant = {
   icon: ReactNode;
@@ -152,13 +158,94 @@ export function OnboardingPage() {
 
   const [selectedCrop, setSelectedCrop] = useState(cropOptions[0].name);
   const [locationMode, setLocationMode] = useState<LocationMode>("gps");
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [farmName, setFarmName] = useState("Green Acre Farm");
   const [village, setVillage] = useState("Nandgaon");
+  const [district, setDistrict] = useState("Nashik");
+  const [manualLatitude, setManualLatitude] = useState("");
+  const [manualLongitude, setManualLongitude] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const timersRef = useRef<number[]>([]);
 
+  const hasIdentityFields =
+    fullName.trim().length > 1 &&
+    email.trim().length > 4 &&
+    password.length >= 6 &&
+    district.trim().length > 1;
+  const hasFarmFields = farmName.trim().length > 1 && village.trim().length > 1;
+  const hasManualCoordinates =
+    locationMode === "gps" || (manualLatitude.trim().length > 0 && manualLongitude.trim().length > 0);
+
   const canProceed =
-    step < 3 || (farmName.trim().length > 1 && village.trim().length > 1);
+    step < 3 || (hasIdentityFields && hasFarmFields && hasManualCoordinates);
+
+  function parseCoordinate(value: string): number | undefined {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+
+  function hasGrantedLocationPermission(permission: {
+    location?: string;
+    coarseLocation?: string;
+  }) {
+    return permission.location === "granted" || permission.coarseLocation === "granted";
+  }
+
+  async function getCurrentCoordinates(): Promise<Coordinates | undefined> {
+    if (Capacitor.isNativePlatform()) {
+      const checkedPermissions = await Geolocation.checkPermissions();
+      let granted = hasGrantedLocationPermission(checkedPermissions);
+
+      if (!granted) {
+        const requestedPermissions = await Geolocation.requestPermissions();
+        granted = hasGrantedLocationPermission(requestedPermissions);
+      }
+
+      if (!granted) {
+        throw new Error(
+          "Location permission was denied. Enable GPS permission or switch to manual location mode.",
+        );
+      }
+
+      const position = await Geolocation.getCurrentPosition({
+        enableHighAccuracy: true,
+        timeout: 12000,
+        maximumAge: 120000,
+      });
+
+      return {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      };
+    }
+
+    if (!navigator.geolocation) {
+      return Promise.resolve(undefined);
+    }
+
+    return new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          resolve({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+        },
+        (error) => {
+          reject(new Error(error.message || "Unable to read device location"));
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 12000,
+          maximumAge: 120000,
+        },
+      );
+    });
+  }
 
   function clearTimers() {
     timersRef.current.forEach((timerId) => {
@@ -178,19 +265,56 @@ export function OnboardingPage() {
     };
   }, []);
 
-  const saveSetup = () => {
-    localStorage.setItem("cropguard.onboarded", "true");
-    localStorage.setItem(
-      "cropguard.profile",
-      JSON.stringify({
+  const saveSetup = async () => {
+    setSubmitError(null);
+    setIsSubmitting(true);
+
+    try {
+      let latitude: number | undefined;
+      let longitude: number | undefined;
+
+      if (locationMode === "gps") {
+        const gpsCoordinates = await getCurrentCoordinates();
+        latitude = gpsCoordinates?.latitude;
+        longitude = gpsCoordinates?.longitude;
+      } else {
+        latitude = parseCoordinate(manualLatitude);
+        longitude = parseCoordinate(manualLongitude);
+
+        if (latitude === undefined || longitude === undefined) {
+          throw new Error("Enter valid latitude and longitude values for manual location mode.");
+        }
+      }
+
+      const response = await registerUser({
+        fullName: fullName.trim(),
+        email: email.trim().toLowerCase(),
+        password,
         farmName: farmName.trim(),
         village: village.trim(),
-        district: "Nashik",
+        district: district.trim(),
         primaryCrop: selectedCrop,
-        language: "English",
-      }),
-    );
-    navigate("/dashboard", { replace: true });
+        ...(latitude !== undefined ? { latitude } : {}),
+        ...(longitude !== undefined ? { longitude } : {}),
+      });
+
+      saveSession(response.token, response.user);
+      navigate("/dashboard", { replace: true });
+    } catch (error) {
+      if (error instanceof ApiRequestError) {
+        if (error.status === 409) {
+          setSubmitError("An account with this email already exists. Use a different email to continue.");
+        } else {
+          setSubmitError(error.message);
+        }
+      } else if (error instanceof Error) {
+        setSubmitError(error.message);
+      } else {
+        setSubmitError("Could not create account right now. Please try again.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const animateToStep = (targetStep: number) => {
@@ -220,8 +344,8 @@ export function OnboardingPage() {
     }, 400);
   };
 
-  const handleContinue = () => {
-    if (!canProceed || isTransitioning) {
+  const handleContinue = async () => {
+    if (!canProceed || isTransitioning || isSubmitting) {
       return;
     }
 
@@ -230,18 +354,15 @@ export function OnboardingPage() {
       return;
     }
 
-    saveSetup();
+    await saveSetup();
   };
 
   const handleSecondaryAction = () => {
-    if (isTransitioning) return;
+    if (isTransitioning || isSubmitting) return;
 
     if (step > 1) {
       animateToStep(step - 1);
-      return;
     }
-
-    saveSetup();
   };
 
   const hero = heroVariants[heroStep];
@@ -381,6 +502,41 @@ export function OnboardingPage() {
                 </div>
 
                 <label className="onb-input-group">
+                  <span className="onb-input-label">Full name</span>
+                  <input
+                    value={fullName}
+                    onChange={(event) => setFullName(event.target.value)}
+                    placeholder="Enter your name"
+                    className="onb-input"
+                    autoComplete="name"
+                  />
+                </label>
+
+                <label className="onb-input-group">
+                  <span className="onb-input-label">Email</span>
+                  <input
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    placeholder="name@example.com"
+                    className="onb-input"
+                    autoComplete="email"
+                    inputMode="email"
+                  />
+                </label>
+
+                <label className="onb-input-group">
+                  <span className="onb-input-label">Password</span>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    placeholder="At least 6 characters"
+                    className="onb-input"
+                    autoComplete="new-password"
+                  />
+                </label>
+
+                <label className="onb-input-group">
                   <span className="onb-input-label">Farm name</span>
                   <input
                     value={farmName}
@@ -400,9 +556,51 @@ export function OnboardingPage() {
                   />
                 </label>
 
+                <label className="onb-input-group">
+                  <span className="onb-input-label">District</span>
+                  <input
+                    value={district}
+                    onChange={(event) => setDistrict(event.target.value)}
+                    placeholder="Enter district"
+                    className="onb-input"
+                  />
+                </label>
+
+                {locationMode === "manual" && (
+                  <>
+                    <label className="onb-input-group">
+                      <span className="onb-input-label">Latitude</span>
+                      <input
+                        value={manualLatitude}
+                        onChange={(event) => setManualLatitude(event.target.value)}
+                        placeholder="e.g. 18.5204"
+                        className="onb-input"
+                        inputMode="decimal"
+                      />
+                    </label>
+
+                    <label className="onb-input-group">
+                      <span className="onb-input-label">Longitude</span>
+                      <input
+                        value={manualLongitude}
+                        onChange={(event) => setManualLongitude(event.target.value)}
+                        placeholder="e.g. 73.8567"
+                        className="onb-input"
+                        inputMode="decimal"
+                      />
+                    </label>
+                  </>
+                )}
+
                 <p className="onb-helper-text">
-                  GPS will be used when native device permissions are connected.
+                  GPS improves weather and disease accuracy. Manual coordinates work offline too.
                 </p>
+
+                {submitError && (
+                  <p className="onb-helper-text" style={{ color: "#b42318", marginTop: 8 }}>
+                    {submitError}
+                  </p>
+                )}
               </section>
             )}
           </div>
@@ -413,20 +611,20 @@ export function OnboardingPage() {
             type="button"
             className="onb-button onb-button--secondary"
             onClick={handleSecondaryAction}
-            disabled={isTransitioning}
+            disabled={isTransitioning || isSubmitting || step === 1}
             data-haptic="light"
           >
-            {step > 1 ? "Back" : "Skip Setup"}
+            Back
           </button>
 
           <button
             type="button"
             className="onb-button onb-button--primary"
             onClick={handleContinue}
-            disabled={!canProceed || isTransitioning}
+            disabled={!canProceed || isTransitioning || isSubmitting}
             data-haptic="medium"
           >
-            {step === 3 ? "Start Dashboard" : "Continue"}
+            {step === 3 ? (isSubmitting ? "Creating Account..." : "Create Account") : "Continue"}
           </button>
         </div>
       </section>

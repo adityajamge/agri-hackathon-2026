@@ -1,4 +1,7 @@
-import { forecastWeek } from "../data/mockData";
+import { useEffect, useMemo, useState } from "react";
+import { getSessionUser } from "../services/session";
+import { fetchWeatherRisk } from "../services/weather";
+import type { WeatherForecastDay } from "../services/models";
 
 // ────────────────────────────────────────────────────────────────────────────
 // SVG weather icons — zero emojis
@@ -57,7 +60,7 @@ const AlertIcon = () => (
   </svg>
 );
 
-function WeatherIcon({ risk }: { risk: string }) {
+function WeatherIcon({ risk }: { risk: "low" | "medium" | "high" }) {
   if (risk === "high") return <WeatherHigh />;
   if (risk === "medium") return <WeatherMedium />;
   return <WeatherLow />;
@@ -65,9 +68,69 @@ function WeatherIcon({ risk }: { risk: string }) {
 
 // ────────────────────────────────────────────────────────────────────────────
 
+function toRiskClass(riskLevel: WeatherForecastDay["risk_level"]): "low" | "medium" | "high" {
+  if (riskLevel === "HIGH") return "high";
+  if (riskLevel === "MEDIUM") return "medium";
+  return "low";
+}
+
+function getDayLabel(date: string) {
+  const parsed = new Date(`${date}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) {
+    return date;
+  }
+
+  return parsed.toLocaleDateString(undefined, { weekday: "short" });
+}
+
 export function ForecastPage() {
-  const highRiskDays = forecastWeek.filter((d) => d.risk === "high").length;
-  const visibleForecast = forecastWeek.slice(0, 5);
+  const [forecast, setForecast] = useState<WeatherForecastDay[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const sessionUser = getSessionUser();
+  const latitude = sessionUser?.latitude ?? 18.52;
+  const longitude = sessionUser?.longitude ?? 73.85;
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadForecast = async () => {
+      setIsLoading(true);
+      setErrorMessage(null);
+
+      try {
+        const response = await fetchWeatherRisk(latitude, longitude);
+        if (!isMounted) {
+          return;
+        }
+
+        setForecast(response.forecast || []);
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        const message = error instanceof Error ? error.message : "Failed to load forecast";
+        setErrorMessage(message);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void loadForecast();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [latitude, longitude]);
+
+  const highRiskDays = useMemo(
+    () => forecast.filter((day) => day.risk_level === "HIGH").length,
+    [forecast],
+  );
 
   return (
     <div className="page stack-lg">
@@ -88,47 +151,53 @@ export function ForecastPage() {
 
       <section aria-label="7-day forecast">
         <p className="section-label">DAILY RISK FORECAST</p>
+
+        {isLoading && <p className="card-body-text">Loading forecast...</p>}
+        {!isLoading && errorMessage && <p className="card-body-text">{errorMessage}</p>}
+
         <div className="native-list-card" role="list">
-          {visibleForecast.map((day) => (
+          {forecast.map((day) => {
+            const riskClass = toRiskClass(day.risk_level);
+
+            return (
             <button
               type="button"
               className="forecast-row"
-              key={day.day}
+              key={day.date}
               data-row-tap
-              data-haptic={day.risk === "high" ? "medium" : "light"}
+              data-haptic={riskClass === "high" ? "medium" : "light"}
             >
               <div className="forecast-day">
-                <span className="forecast-day__name">{day.day}</span>
+                <span className="forecast-day__name">{getDayLabel(day.date)}</span>
               </div>
 
               <div className="forecast-main">
                 <span className="forecast-weather-icon">
-                  <WeatherIcon risk={day.risk} />
+                  <WeatherIcon risk={riskClass} />
                 </span>
                 <div className="forecast-main__copy">
-                  <span className="forecast-temp">
-                    {day.tempMax}° / {day.tempMin}°
-                  </span>
+                  <span className="forecast-temp">{Math.round(day.temperature)}°C</span>
                   <span className="forecast-stats">
                     <span>
                       <DropletIcon /> {day.humidity}%
                     </span>
                     <span>
-                      <CloudIcon /> {day.rainChance}%
+                      <CloudIcon /> {day.precipitation_probability}%
                     </span>
                   </span>
-                  <span className="forecast-reason">{day.reason}</span>
+                  <span className="forecast-reason">{day.risk_reason}</span>
                 </div>
               </div>
 
               <span
-                className={`risk-pill risk-pill--${day.risk}`}
-                data-haptic={day.risk === "high" ? "medium" : "light"}
+                className={`risk-pill risk-pill--${riskClass}`}
+                data-haptic={riskClass === "high" ? "medium" : "light"}
               >
-                {day.risk.toUpperCase()}
+                {day.risk_level}
               </span>
             </button>
-          ))}
+            );
+          })}
         </div>
       </section>
     </div>
